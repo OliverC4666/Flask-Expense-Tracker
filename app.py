@@ -21,7 +21,8 @@ class Balance(db.Model):
 def index():
     purchases = Purchase.query.all()
     balance = Balance.query.first().amount
-    return render_template('index.html', purchases=purchases, balance=balance)
+    total_spent = sum(p.price for p in purchases)  # Calculate total spent
+    return render_template('index.html', purchases=purchases, balance=balance, total_spent=total_spent)
 
 @app.route('/add', methods=['POST'])
 def add_purchase():
@@ -37,11 +38,15 @@ def add_purchase():
         balance.amount -= price
         db.session.commit()
 
-        # Broadcast update to all users
+        # Calculate new total spent
         purchases = Purchase.query.all()
+        total_spent = sum(p.price for p in purchases)
+
+        # Broadcast update to all users
         data = {
             "balance": balance.amount,
-            "purchases": [{"item": p.item, "price": p.price} for p in purchases]
+            "purchases": [{"item": p.item, "price": p.price} for p in purchases],
+            "total_spent": total_spent
         }
         socketio.emit('update', data)
     
@@ -53,11 +58,30 @@ def reset_balance():
     balance = Balance.query.first()
     balance.amount = 1000000  # Reset to 1,000,000 VND
     db.session.commit()
-    socketio.emit('update', {"balance": balance.amount, "purchases": []})
+    socketio.emit('update', {"balance": balance.amount, "purchases": [], "total_spent": 0})
     return redirect(url_for('index'))
 
+@app.route('/set_balance', methods=['POST'])
+def set_balance():
+    new_balance = request.form.get('new_balance', type=float)
+    
+    if new_balance is not None and new_balance >= 0:
+        balance = Balance.query.first()
+        if balance:
+            balance.amount = new_balance
+        else:
+            balance = Balance(amount=new_balance)
+            db.session.add(balance)
+
+        db.session.commit()
+
+        # Send update to all clients via WebSockets
+        purchases = Purchase.query.all()
+        total_spent = sum(p.price for p in purchases)
+        socketio.emit('update', {"balance": balance.amount, "purchases": [], "total_spent": total_spent})
+
+    return redirect(url_for('index'))
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))  # Default to 5000 if not set
     socketio.run(app, host='0.0.0.0', port=port)
-

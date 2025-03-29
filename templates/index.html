@@ -23,8 +23,16 @@
         {% endfor %}
     </ul>
 
+    <h3>Total Spent: <span id="total-spent">{{ total_spent }}</span> VND</h3>
+
     <form action="/reset" method="post">
         <button type="submit">Reset Balance</button>
+    </form>
+
+    <h3>Set Initial Balance:</h3>
+    <form action="/set_balance" method="post">
+        <input type="number" step="0.01" name="new_balance" placeholder="Enter new balance (VND)" required>
+        <button type="submit">Set Balance</button>
     </form>
 
     <!-- WebSockets for real-time updates -->
@@ -34,6 +42,7 @@
 
         socket.on('update', function(data) {
             document.getElementById("balance").innerText = data.balance + " VND";
+            document.getElementById("total-spent").innerText = data.total_spent + " VND";  // Update total spent
             
             let list = document.getElementById("expense-list");
             list.innerHTML = "";
