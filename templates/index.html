@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Expense Tracker</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <h1>Daily Expense Tracker</h1>
+    <h2>Remaining Balance: <span id="balance">{{ balance }}</span> VND</h2>
+
+    <form action="/add" method="post">
+        <input type="text" name="item" placeholder="Item" required>
+        <input type="number" step="0.01" name="price" placeholder="Price (VND)" required>
+        <button type="submit">Add Purchase</button>
+    </form>
+
+    <h3>Purchase History:</h3>
+    <ul id="expense-list">
+        {% for purchase in purchases %}
+            <li>{{ purchase.item }} - {{ purchase.price }} VND</li>
+        {% endfor %}
+    </ul>
+
+    <form action="/reset" method="post">
+        <button type="submit">Reset Balance</button>
+    </form>
+
+    <!-- WebSockets for real-time updates -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script>
+        var socket = io.connect('http://' + document.domain + ':' + location.port);
+
+        socket.on('update', function(data) {
+            document.getElementById("balance").innerText = data.balance + " VND";
+            
+            let list = document.getElementById("expense-list");
+            list.innerHTML = "";
+            data.purchases.forEach(purchase => {
+                let item = document.createElement("li");
+                item.textContent = `${purchase.item} - ${purchase.price} VND`;
+                list.appendChild(item);
+            });
+        });
+    </script>
+</body>
+</html>
