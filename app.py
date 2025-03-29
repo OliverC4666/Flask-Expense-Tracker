@@ -20,9 +20,18 @@ class Balance(db.Model):
 @app.route('/')
 def index():
     purchases = Purchase.query.all()
-    balance = Balance.query.first().amount
-    total_spent = sum(p.price for p in purchases)  # Calculate total spent
-    return render_template('index.html', purchases=purchases, balance=balance, total_spent=total_spent)
+    
+    # Ensure balance exists in the database
+    balance = Balance.query.first()
+    if not balance:
+        balance = Balance(amount=1000000)  # Default starting balance
+        db.session.add(balance)
+        db.session.commit()
+
+    # Calculate total spent
+    total_spent = sum(p.price for p in purchases)
+
+    return render_template('index.html', purchases=purchases, balance=balance.amount, total_spent=total_spent)
 
 @app.route('/add', methods=['POST'])
 def add_purchase():
